@@ -463,53 +463,78 @@ def xpoint_table(runs, tags):
               f'{ref[t][0]:>11.2e} {ref[t][1]:>11.2e} {ref[t][2]:>11.2e}')
 
 
-def plot_xpoint_panels(run, fname=None, with_field=True):
-    """Nx=1 solution: (a) psi, (b) zoom at the X-point and, if ``with_field``, (c) B_R and B_Z along Z at R = R_X."""
+def _coil_squares(ax, cur, label=None):
+    ax.scatter(cur[:, 0], cur[:, 1], marker='s', s=25, c='white', edgecolors='k', linewidths=0.6,
+               label=label, zorder=5)
+
+
+def plot_xpoint_flux(run, fname=None):
+    """Nx=1: poloidal flux over the whole mesh domain. The cyan curve is the psi = 0 isocontour
+    (it passes through the X-point; small loops around isolated coils are genuine psi = 0 curves)."""
+    import matplotlib.pyplot as plt
+    RX, ZX = XPOINT_RZ
+    RR, ZZ = np.meshgrid(run['Rg'], run['Zg'])
+    levels = np.linspace(-1.0, 0.25, 31)
+    fig, ax = plt.subplots(figsize=(6, 7))
+    cf = ax.contourf(RR, ZZ, run['psi'], levels=levels, cmap='inferno', extend='both')
+    ax.contour(RR, ZZ, run['psi'], levels=levels, colors='k', linewidths=0.4)
+    ax.contour(RR, ZZ, run['psi'], levels=[0.0], colors='c', linewidths=2)
+    _coil_squares(ax, run['currents'])
+    ax.plot([RX], [ZX], 'r+', ms=18, mew=2)
+    fig.colorbar(cf, ax=ax, shrink=0.85).set_label(r'$\psi$ [Wb/rad]', fontsize=12)
+    ax.set_xlabel('R [m]')
+    ax.set_ylabel('Z [m]')
+    ax.set_title(rf'DIII-D ($N_x=1$, X-point ({RX:.2f},{ZX:.2f})): Poloidal Flux $\psi(R,Z)$', fontsize=11)
+    ax.set_xlim(R_LIM[0], R_LIM[1])
+    ax.set_ylim(run['Zg'][0], run['Zg'][-1])
+    ax.set_xticks(np.arange(R_LIM[0], R_LIM[1] + 0.01, 0.25))
+    fig.tight_layout()
+    if fname:
+        fig.savefig(fname, dpi=150, bbox_inches='tight')
+    return fig
+
+
+def plot_xpoint_zoom(run, fname=None):
+    """Nx=1: zoom at the X-point. Thick cyan: psi = 0. Thin lines: psi = +-0.001, +-0.003, +-0.005,
+    +-0.01 (solid positive, dashed negative). The colormap saturates outside [-0.27, 0.06]."""
+    import matplotlib.pyplot as plt
+    RX, ZX = XPOINT_RZ
+    RR, ZZ = np.meshgrid(run['Rg'], run['Zg'])
+    fig, ax = plt.subplots(figsize=(6.0, 5.9))
+    cf = ax.contourf(RR, ZZ, run['psi'], levels=np.arange(-1.0, 0.7501, 0.01), cmap='inferno',
+                     extend='both', vmin=-0.27, vmax=0.06)
+    cs = ax.contour(RR, ZZ, run['psi'], levels=[-0.01, -0.005, -0.003, -0.001, 0.001, 0.003, 0.005, 0.01],
+                    colors='deepskyblue', linewidths=1.0)
+    ax.clabel(cs, levels=[-0.003, 0.003], fontsize=6, fmt='%g')
+    ax.contour(RR, ZZ, run['psi'], levels=[0.0], colors='cyan', linewidths=3)
+    _coil_squares(ax, run['currents'])
+    ax.plot([RX], [ZX], 'r+', ms=18, mew=2.5)
+    cb = fig.colorbar(cf, ax=ax, shrink=0.85)
+    cb.set_label(r'$\psi$ [Wb/rad]', fontsize=11)
+    ticks = np.round(np.arange(-0.95, 0.58, 0.19), 2) + 0.0
+    cb.set_ticks(ticks)
+    cb.set_ticklabels([('0.00' if abs(t) < 1e-9 else f'{t:.2f}'.replace('-', '\u2212')) for t in ticks])
+    ax.set_xlim(RX - 0.35, RX + 0.35)
+    ax.set_ylim(ZX - 0.30, ZX + 0.30)
+    ax.set_xlabel('R [m]')
+    ax.set_ylabel('Z [m]')
+    ax.set_title('Zoom on the X-point region', fontsize=12)
+    fig.tight_layout()
+    if fname:
+        fig.savefig(fname, dpi=150, bbox_inches='tight')
+    return fig
+
+
+def plot_xpoint_field(run, fname=None):
+    """Nx=1: B_R and B_Z along Z at R = R_X, from the derivative of psi (cubic spline)."""
     import matplotlib.pyplot as plt
     from scipy.interpolate import RectBivariateSpline
     RX, ZX = XPOINT_RZ
-    RR, ZZ = np.meshgrid(run['Rg'], run['Zg'])
-    bd, cur = run['boundary'], run['currents']
-    fig, axes = plt.subplots(1, 3 if with_field else 2, figsize=(17 if with_field else 12, 6))
-    ax = axes[0]
-    cf = ax.contourf(RR, ZZ, run['psi'], levels=30, cmap='inferno')
-    ax.contour(RR, ZZ, run['psi'], levels=30, colors='k', linewidths=0.3)
-    ax.plot(bd[:, 0], bd[:, 1], 'c-', lw=1.5, label='Boundary with X-point')
-    ax.scatter(cur[:, 0], cur[:, 1], marker='s', s=20, c='white', edgecolors='k', lw=0.5, zorder=5, label='PF coils')
-    ax.plot([RX], [ZX], 'rx', ms=9, mew=2, label='X-point')
-    ax.set_title(r'Poloidal flux $\psi(R,Z)$')
-    ax.set_aspect('equal')
-    ax.set_xlabel('R [m]')
-    ax.set_ylabel('Z [m]')
-    ax.legend(fontsize=7, loc='upper right')
-    fig.colorbar(cf, ax=ax, shrink=0.7)
-    ax = axes[1]
-    w = 0.25
-    sel_r = (run['Rg'] > RX - w) & (run['Rg'] < RX + w)
-    sel_z = (run['Zg'] > ZX - w) & (run['Zg'] < ZX + w)
-    sub = run['psi'][np.ix_(sel_z, sel_r)]
-    cf = ax.contourf(RR[np.ix_(sel_z, sel_r)], ZZ[np.ix_(sel_z, sel_r)], sub, levels=30, cmap='inferno')
-    ax.contour(RR[np.ix_(sel_z, sel_r)], ZZ[np.ix_(sel_z, sel_r)], sub, levels=[0.0], colors='c', linewidths=1.5)
-    ax.plot(bd[:, 0], bd[:, 1], 'w-', lw=1)
-    ax.plot([RX], [ZX], 'rx', ms=10, mew=2)
-    ax.set_xlim(RX - w, RX + w)
-    ax.set_ylim(ZX - w, ZX + w)
-    ax.set_title('Zoom at the X-point')
-    ax.set_aspect('equal')
-    ax.set_xlabel('R [m]')
-    fig.colorbar(cf, ax=ax, shrink=0.7)
-    if not with_field:
-        fig.tight_layout()
-        if fname:
-            fig.savefig(fname, dpi=150, bbox_inches='tight')
-        return fig
-    ax = axes[2]
     sp = RectBivariateSpline(run['Zg'], run['Rg'], run['psi'], kx=3, ky=3)
     zs = np.linspace(max(ZX - 0.5, run['Zg'][0]), ZX + 0.5, 400)
-    BR = -sp(zs, RX, dx=1, grid=False) / RX
-    BZ = sp(zs, RX, dy=1, grid=False) / RX
-    ax.plot(zs, BR, label=r'$B_R$')
-    ax.plot(zs, BZ, label=r'$B_Z$')
+    fig, ax = plt.subplots(figsize=(6, 4.5))
+    ax.plot(zs, -sp(zs, RX, dx=1, grid=False) / RX, label=r'$B_R$')
+    ax.plot(zs, sp(zs, RX, dy=1, grid=False) / RX, label=r'$B_Z$')
     ax.axvline(ZX, color='r', ls=':', lw=1)
     ax.axhline(0, color='0.6', lw=0.5)
     ax.set_xlabel('Z [m]')
@@ -564,21 +589,29 @@ def _decorate(ax, F, run, R_LIM, Z_LIM, coils=True):
 
 
 R_LIM = (0.75, 3.0)
-Z_LIM = (-2.0, 2.0)
+Z_LIM = (-1.75, 1.75)
 
 
 def plot_flux(F, run, fname=None):
+    """Nx=0: poloidal flux over the mesh domain, with the D-shape boundary and the PF coils."""
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(6, 8))
+    fig, ax = plt.subplots(figsize=(6.2, 7.6))
     cf = ax.contourf(F['RR'], F['ZZ'], F['psi'], levels=30, cmap='inferno')
     ax.contour(F['RR'], F['ZZ'], F['psi'], levels=30, colors='k', linewidths=0.3)
-    _decorate(ax, F, run, R_LIM, Z_LIM)
+    ax.plot(run['boundary'][:, 0], run['boundary'][:, 1], 'c-', lw=2)
+    _coil_squares(ax, run['currents'])
+    cb = fig.colorbar(cf, ax=ax, aspect=30, pad=0.05, fraction=0.15)
+    cb.set_label(r'$\psi$ [Wb/rad]', fontsize=12)
+    ax.set_xlabel('R [m]')
     ax.set_ylabel('Z [m]')
-    ax.set_title(r'DIII-D: poloidal flux $\psi(R,Z)$')
-    fig.colorbar(cf, ax=ax, shrink=0.8).set_label(r'$\psi$ [Wb/rad]')
+    ax.set_title(r'DIII-D: Poloidal Flux $\psi(R,Z)$')
+    ax.set_xlim(R_LIM[0], R_LIM[1])
+    ax.set_ylim(F['Zg'][0], F['Zg'][-1])
+    ax.set_xticks(np.arange(R_LIM[0], R_LIM[1] + 0.01, 0.25))
     fig.tight_layout()
+    ax.set_aspect('equal')
     if fname:
-        fig.savefig(fname, dpi=150, bbox_inches='tight')
+        fig.savefig(fname, dpi=150)
     return fig
 
 

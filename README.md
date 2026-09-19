@@ -4,7 +4,7 @@ A fast, parallel solver for the **semi-free boundary** problem of axisymmetric t
 toroidal current density of the plasma $J_\phi(R,Z)$, a desired plasma boundary (smooth, or with one or more
 X-points) and the positions of the poloidal-field (PF) coils, it computes the coil currents that sustain that
 boundary and extends the solution to the vacuum region outside the plasma, returning the poloidal flux
-$\psi(R,Z)$ and the magnetic field $B_R,\,B_Z$.
+$\psi(R,Z)$ and the magnetic field components $B_R$ and $B_Z$.
 
 The problem is formulated with the Green functions of the toroidal elliptic operator $\Delta^*$ and solved as a
 regularized least-squares problem (with exact equality constraints when X-points are prescribed). No iterative
@@ -14,14 +14,15 @@ independent of the others, which makes the code naturally parallel (OpenMP).
 <p align="center">
   <img src="assets/poloidal_flux.png" alt="Poloidal flux of the DIII-D case" height="440">
 </p>
-<p align="center"><em>Poloidal flux &psi;(R,Z) for the DIII-D case (151x261 mesh, no X-point). The black curve is the
+<p align="center"><em>Poloidal flux &psi;(R,Z) for the DIII-D case (151x261 mesh, no X-point). The cyan curve is the
 prescribed plasma boundary and the squares are the 18 PF coils.</em></p>
 
 <p align="center">
-  <img src="assets/xpoint_solution.png" alt="Solution with an X-point and zoom" width="760">
+  <img src="assets/xpoint_flux.png" alt="Solution with an X-point" height="440">
+  <img src="assets/xpoint_zoom.png" alt="Zoom around the X-point" height="440">
 </p>
-<p align="center"><em>Solution with one X-point at (R, Z) = (1.45, -1.30) m: poloidal flux (left) and zoom around the
-X-point (right).</em></p>
+<p align="center"><em>Solution with one X-point at (R, Z) = (1.45, -1.30) m: poloidal flux over the whole domain
+(the cyan curve is the &psi; = 0 isocontour, which passes through the X-point) and zoom around the X-point.</em></p>
 
 ## Contents
 
@@ -40,20 +41,21 @@ X-point (right).</em></p>
 Treating $J_\phi$ as a fixed source, the Grad-Shafranov equation becomes linear,
 $\Delta^*\psi=-\mu_0 R J_\phi$, so the flux is a superposition of the plasma and coil contributions,
 
-$$\psi(R_b,Z_b)=\underbrace{\int_{\Omega_p} J_\phi\,G^{\psi}\,dR\,dZ}_{\psi_p}+\underbrace{\sum_{i=1}^{N_c} I_i\,G^{\psi}(R_i,Z_i;R_b,Z_b)}_{\psi_c},$$
+$$\psi(R_b,Z_b)=\underbrace{\int_{\Omega_p} J_\phi G^{\psi} dR dZ}_{\psi_p}+\underbrace{\sum_{i=1}^{N_c} I_i G^{\psi}(R_i,Z_i;R_b,Z_b)}_{\psi_c}$$
 
 where $G^\psi$ is the Green function of $\Delta^*$ (expressed with complete elliptic integrals). The currents $I_i$
 are the solution of
 
-$$\min_I \;\lVert G\,I-r\rVert^2,\qquad r_j=\psi_{ref}-\psi_p(R_{b_j},Z_{b_j}),$$
+$$\min_I \lVert G I-r\rVert^2$$
 
-over $N_b\gg N_c$ boundary points. The main numerical ingredients are:
+where $G_{ji}=G^\psi(R_i,Z_i;R_{b_j},Z_{b_j})$ and $r_j=\psi_{ref}-\psi_p(R_{b_j},Z_{b_j})$, over $N_b\gg N_c$ boundary
+points. The main numerical ingredients are:
 
 - **Regularized SVD solution.** The matrix $G$ is severely ill-conditioned, so the problem is solved through its
   SVD (the normal equations are never formed) with Tikhonov regularization; the parameter is chosen
   automatically at the corner of the L-curve (or set manually in the configuration file).
 - **X-points.** For each X-point the three conditions $B_R=0$, $B_Z=0$, $\psi=\psi_{ref}$ are imposed *exactly* as
-  a linear constraint $C\,I=d$ and eliminated with the null-space method, which reduces the problem to an
+  a linear constraint $C I=d$ and eliminated with the null-space method, which reduces the problem to an
   unconstrained one with the same solver.
 - **Cut-Cell quadrature.** The plasma integral over the current-density grid uses a boundary-conforming quadrature
   of second order, $O(h^2)$, with a subtraction of the Green-function singularity.
@@ -153,7 +155,7 @@ on the boundary, so the boundary must have a cusp there. There are two ways to p
 
 Every case directory in `cases/` ships both variants. `Dshape.txt`/`Jt.txt` are the smooth boundary and its current
 density; `Dshape_xpoint.txt`/`Jt_xpoint.txt` are the boundary deformed to create an X-point at
-$(R_X,Z_X)=(1.45,\,-1.30)$ m (the cusp vertex is exactly that point) and the current density consistent with it.
+$(R_X, Z_X)=(1.45, -1.30)$ m (the cusp vertex is exactly that point) and the current density consistent with it.
 The solver reads the files named in the configuration, so to run the X-point variant use a separate directory
 (the outputs share names with the smooth-boundary run):
 
@@ -182,14 +184,14 @@ Written to the working directory (lengths in meters, currents in amperes, $\psi$
 | `Jphi_check.txt` | The current density as read by the solver. |
 
 `BR_check.txt` and `BZ_check.txt` are the two most expensive outputs. Note that near the plasma boundary
-(inside it) the closed-form $G^{B_R},G^{B_Z}$ are singular enough to lose accuracy; **differentiating $\psi$**
+(inside it) the closed-form $G^{B_R}$ and $G^{B_Z}$ are singular enough to lose accuracy; **differentiating $\psi$**
 ($B_R=-\frac1R\partial_Z\psi$, $B_Z=\frac1R\partial_R\psi$) gives a smooth, divergence-free field and is the
 recommended way to obtain $\mathbf{B}$.
 
 ### Cost
 
 The final evaluation of $\psi$ (and of $B$) sums over the whole current-density grid for every output point, so its
-cost grows like $N^2$ with $N=n_{pr}\,n_{pz}$. Reference times on a 2-core machine (Google Colab):
+cost grows like $N^2$ with $N=n_{pr} n_{pz}$. Reference times on a 2-core machine (Google Colab):
 
 | Mesh | 82x142 | 100x172 | 151x261 | 213x368 | 301x521 |
 |---|---|---|---|---|---|
