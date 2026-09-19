@@ -1,0 +1,29 @@
+{
+  "name": "Test2_SingleCoil",
+  "description": "Validation Test 2: single coil, zero plasma current, D-shape boundary taken from a FIXED_GS_SOLVER run. Psi_b is deliberately nonzero (unlike the standard Soloviev convention) so the least-squares solve returns a nontrivial current to check against an independent Green's-function evaluation.",
+  "geometry": {
+    "Ro": 0.9,
+    "a": 0.6,
+    "kappa": 1.9,
+    "delta": 0.49
+  },
+  "constraints": {
+    "I_plasma": 1600000.0,
+    "P_axis": 30000.0,
+    "B_axis": 0.4,
+    "Psi_b": 0.05
+  },
+  "mesh": {
+    "r_min": 0.15,
+    "r_max": 1.65,
+    "z_min": -1.3,
+    "z_max": 1.3,
+    "npr": 151,
+    "npz": 261
+  },
+  "files": {
+    "Jt": "Jt.txt",
+    "boundary": "Dshape.txt",
+    "coils": "coils.txt"
+  }
+}

@@ -1,0 +1,10 @@
+# Python dependencies for the analysis notebooks in notebooks/ (they run as-is on Google Colab).
+# The solver itself is C++ and only needs g++ with OpenMP and make; see README.md.
+
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.6
+
+# Needed only by notebooks 04 and 05 (comparison with freegs). Pinned to a commit that includes the
+# NumPy 2.x compatibility fix, which the PyPI release lacks.
+freegs @ git+https://github.com/freegs-plasma/freegs.git@9fbec2056b4322ea253bb5614896d549365163f3

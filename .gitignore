@@ -1,0 +1,85 @@
+# .gitignore
+
+# Private / local-only directories
+docs/
+tokeq/
+Images/
+Propuesta/
+
+# Scratch directory for copies of cases (see README, "Quick start")
+runs/
+
+# Build output (compiled binaries, legacy run artifacts)
+build/
+
+# Python virtual environment
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled C++ executables and object files
+*.exe
+*.out
+*.app
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+semifree_solver
+gs_solver
+
+# Output data files (keep structure, ignore large data)
+*.vtk
+*.vtu
+psi_check.txt
+BR_check.txt
+BZ_check.txt
+Jphi_check.txt
+Results/
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# LaTeX build files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+
+# Microsoft Office temporary files
+~$*.pptx
+~$*.docx
+
+# Solver outputs written inside case directories (the inputs Jt.txt, Dshape.txt,
+# coils.txt, Dshape_xpoint.txt and Jt_xpoint.txt are tracked)
+cases/*/corrientes.txt
+cases/*/sample_points_check.txt
+cases/*/psi_boundary_check.txt
+cases/*/regularization_diagnostics.txt
+cases/*/_*

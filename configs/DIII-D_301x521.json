@@ -1,0 +1,29 @@
+{
+  "name": "DIII-D_301x521",
+  "description": "DIII-D tokamak (General Atomics, San Diego), 301x521 mesh. One of the five meshes (82x142, 100x172, 151x261, 213x368, 301x521) used in the validation studies. Domain R in [0.15, 3.0] m, Z in [-1.75, 1.75] m; the Z range covers the full poloidal-field coil set (coils.txt spans Z in [-1.622, 1.622] m). The five configurations differ only in npr and npz.",
+  "geometry": {
+    "Ro": 1.67,
+    "a": 0.67,
+    "kappa": 1.77,
+    "delta": 0.3
+  },
+  "constraints": {
+    "I_plasma": 1500000.0,
+    "P_axis": 50000.0,
+    "B_axis": 2.0,
+    "Psi_b": 0.0
+  },
+  "mesh": {
+    "r_min": 0.15,
+    "r_max": 3.0,
+    "z_min": -1.75,
+    "z_max": 1.75,
+    "npr": 301,
+    "npz": 521
+  },
+  "files": {
+    "Jt": "Jt.txt",
+    "boundary": "Dshape.txt",
+    "coils": "coils.txt"
+  }
+}
